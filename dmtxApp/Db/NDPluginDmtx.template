@@ -23,3 +23,49 @@ include "NDPluginBase.template"
 #
 ##################################################################
 
+
+
+record(ao, "$(P)$(R)NumberCodes"){
+    field(DTYP, "asynInt32")
+    field(OUT, "@asyn($(PORT),$(ADDR), $(TIMEOUT))NUMBER_CODES")
+    field(VAL, "0")
+    info(autosaveFields, "VAL")
+}
+
+record(ai, "$(P)$(R)NumberCodes_RBV"){
+    field(DTYP, "asynInt32")
+    field(INP, "@asyn($(PORT),$(ADDR), $(TIMEOUT))NUMBER_CODES")
+    field(VAL, "0")
+    field(SCAN, "I/O Intr")
+}
+
+
+record(waveform, "$(P)$(R)CodeMessage"){
+    field(DTYP, "asynOctet")
+    field(OUT, "@asyn($(PORT),$(ADDR), $(TIMEOUT))CODE_MESSAGE")
+    field(VAL, "0")
+    info(autosaveFields, "VAL")
+}
+
+record(waveform, "$(P)$(R)CodeMessage_RBV"){
+    field(DTYP, "asynOctet")
+    field(INP, "@asyn($(PORT),$(ADDR), $(TIMEOUT))CODE_MESSAGE")
+    field(VAL, "0")
+    field(SCAN, "I/O Intr")
+}
+
+
+record(bo, "$(P)$(R)CodeFound"){
+    field(DTYP, "asynInt32")
+    field(OUT, "@asyn($(PORT),$(ADDR), $(TIMEOUT))CODE_FOUND")
+    field(VAL, "0")
+    info(autosaveFields, "VAL")
+}
+
+record(bi, "$(P)$(R)CodeFound_RBV"){
+    field(DTYP, "asynInt32")
+    field(INP, "@asyn($(PORT),$(ADDR), $(TIMEOUT))CODE_FOUND")
+    field(VAL, "0")
+    field(SCAN, "I/O Intr")
+}
+
