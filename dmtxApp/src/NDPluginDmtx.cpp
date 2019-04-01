@@ -123,13 +123,14 @@ asynStatus NDPluginDmtx::decode_dmtx_image(){
 	this->dmtxRegion = dmtxRegionFindNext(this->dmtxDecode, NULL);
 	if(this->dmtxRegion != NULL){
 		this->message = dmtxDecodeMatrixRegion(this->dmtxDecode, this->dmtxRegion, DmtxUndefined);
-		if(message != NULL){
-			string out_message;
-			fwrite(message->output, sizeof(unsigned char), message->outputIdx, stdout);
-			char buf[256];
-			memcpy(buf, message->output, message->outputIdx);
-			out_message = buf;
-			setStringParam(NDPluginDmtxCodeMessage, out_message);
+		if(this->message != NULL){
+			fputs("output: \"", stdout);
+            fwrite(this->message->output, sizeof(unsigned  char),  this->message->outputIdx, stdout);
+            fputs("\"\n", stdout);
+			//char buf[256];
+			//memcpy(buf, message->output, message->outputIdx);
+			//out_message = buf;
+			//setStringParam(NDPluginDmtxCodeMessage, out_message);
 			setIntegerParam(NDPluginDmtxCodeFound, 1);
 		}
 		else{
@@ -140,7 +141,7 @@ asynStatus NDPluginDmtx::decode_dmtx_image(){
 	}
 	else{
 		setIntegerParam(NDPluginDmtxCodeFound, 0);
-		return asynError;
+		return asynDisabled;
 	}
 	return asynSuccess;
 }
@@ -157,6 +158,7 @@ void NDPluginDmtx::processCallbacks(NDArray *pArray){
 	NDArray *pScratch;
 	asynStatus status = asynSuccess;
 	NDArrayInfo arrayInfo;
+	int code_found;
 
 	//call base class and get information about frame
 	NDPluginDriver::beginProcessCallbacks(pArray);
@@ -168,6 +170,14 @@ void NDPluginDmtx::processCallbacks(NDArray *pArray){
 	this->unlock();
 
 	status = init_dmtx_structs(pArray, arrayInfo.xSize, arrayInfo.ySize);
+	if(status == asynError) asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s::%s Error, unable to initialize decoder\n", pluginName, functionName);
+	else{
+		status = decode_dmtx_image();
+		if(status == asynDisabled) asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s::%s No code found in image\n", pluginName, functionName);
+		else if(status == asynSuccess){
+			dmtxMessageDestroy(&(this->message));
+		}
+	}
 
 	this->lock();
 

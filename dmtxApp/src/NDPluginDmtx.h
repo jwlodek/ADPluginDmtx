@@ -21,7 +21,7 @@ using namespace std;
 //version numbers
 #define DMTX_VERSION      	0
 #define DMTX_REVISION     	0
-#define DMTX_MODIFICATION 	1
+#define DMTX_MODIFICATION 	2
 
 
 #define NDPluginDmtxCodeFoundString "CODE_FOUND" //asynParamInt32
