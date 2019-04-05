@@ -41,16 +41,19 @@ record(ai, "$(P)$(R)NumberCodes_RBV"){
 
 
 record(waveform, "$(P)$(R)CodeMessage"){
-    field(DTYP, "asynOctet")
+    field(PINI, "YES")
+    field(DTYP, "asynOctetWrite")
     field(OUT, "@asyn($(PORT),$(ADDR), $(TIMEOUT))CODE_MESSAGE")
-    field(VAL, "0")
+    field(FTVL, "CHAR")
+    field(NELM, "256")
     info(autosaveFields, "VAL")
 }
 
 record(waveform, "$(P)$(R)CodeMessage_RBV"){
-    field(DTYP, "asynOctet")
+    field(DTYP, "asynOctetRead")
     field(INP, "@asyn($(PORT),$(ADDR), $(TIMEOUT))CODE_MESSAGE")
-    field(VAL, "0")
+    field(FTVL, "CHAR")
+    field(NELM, "256")   
     field(SCAN, "I/O Intr")
 }
 
