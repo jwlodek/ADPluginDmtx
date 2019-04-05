@@ -16,6 +16,7 @@
 #include <math.h>
 #include <iostream>
 #include <stdio.h>
+#include <thread>
 
 
 //include epics/area detector libraries
@@ -146,6 +147,30 @@ asynStatus NDPluginDmtx::decode_dmtx_image(){
 	return asynSuccess;
 }
 
+void static process_frame_wrapper(void* obj_instance, NDArray* pArray){
+	NDPluginDmtx* pPlugin = (NDPluginDmtx*) obj_instance;
+	pPlugin->process_incoming_frame(pArray);
+}
+
+
+void NDPluginDmtx::process_incoming_frame(NDArray* pArray){
+	const char* functionName = "process_incoming_frame";
+	printf("started processing thread\n");
+	NDArrayInfo arrayInfo;
+	pArray->getInfo(&arrayInfo);
+	asynStatus status = init_dmtx_structs(pArray, arrayInfo.xSize, arrayInfo.ySize);
+	if(status == asynError) asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s::%s Error, unable to initialize decoder\n", pluginName, functionName);
+	else{
+		status = decode_dmtx_image();
+		if(status == asynDisabled) asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s::%s No code found in image\n", pluginName, functionName);
+		else if(status == asynSuccess){
+			dmtxMessageDestroy(&(this->message));
+		}
+	}
+	this->processing = false;
+	printf("finished processing thread");
+}
+
 
 /* Process callbacks function inherited from NDPluginDriver.
  * You must implement this function for your plugin to accept NDArrays
@@ -155,28 +180,21 @@ asynStatus NDPluginDmtx::decode_dmtx_image(){
 */
 void NDPluginDmtx::processCallbacks(NDArray *pArray){
 	static const char* functionName = "processCallbacks";
-	NDArray *pScratch;
 	asynStatus status = asynSuccess;
-	NDArrayInfo arrayInfo;
 	int code_found;
 
 	//call base class and get information about frame
 	NDPluginDriver::beginProcessCallbacks(pArray);
 
-	// convert to Mat
-	pArray->getInfo(&arrayInfo);
-
 	//unlock the mutex for the processing portion
 	this->unlock();
 
-	status = init_dmtx_structs(pArray, arrayInfo.xSize, arrayInfo.ySize);
-	if(status == asynError) asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s::%s Error, unable to initialize decoder\n", pluginName, functionName);
-	else{
-		status = decode_dmtx_image();
-		if(status == asynDisabled) asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s::%s No code found in image\n", pluginName, functionName);
-		else if(status == asynSuccess){
-			dmtxMessageDestroy(&(this->message));
-		}
+	if(!this->processing){
+
+		this->processing = true;
+		thread processing_thread(process_frame_wrapper, this, pArray);
+		processing_thread.detach();
+
 	}
 
 	this->lock();

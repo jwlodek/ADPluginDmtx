@@ -42,6 +42,7 @@ class NDPluginDmtx : public NDPluginDriver {
 		//~NDPlugin___();
 
 		void processCallbacks(NDArray *pArray);
+		void process_incoming_frame(NDArray* pArray);
 
 		virtual asynStatus writeInt32(asynUser* pasynUser, epicsInt32 value);
 
@@ -69,10 +70,14 @@ class NDPluginDmtx : public NDPluginDriver {
     	DmtxRegion* dmtxRegion;
     	DmtxMessage* message;
 
+		// variables for processing thread
+		bool processing = false;
+
         // init all plugin additional functions here
 
 		asynStatus init_dmtx_structs(NDArray* pArray, size_t width, size_t height);
 		asynStatus decode_dmtx_image();
+
 
 };
 
