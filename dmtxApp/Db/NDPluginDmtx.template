@@ -61,14 +61,19 @@ record(waveform, "$(P)$(R)CodeMessage_RBV"){
 record(bo, "$(P)$(R)CodeFound"){
     field(DTYP, "asynInt32")
     field(OUT, "@asyn($(PORT),$(ADDR), $(TIMEOUT))CODE_FOUND")
-    field(VAL, "0")
+    field(ZNAM, "NO")
+    field(ONAM, "YES")
+    field(VAL, "$(NONE=0)")
     info(autosaveFields, "VAL")
 }
 
 record(bi, "$(P)$(R)CodeFound_RBV"){
     field(DTYP, "asynInt32")
     field(INP, "@asyn($(PORT),$(ADDR), $(TIMEOUT))CODE_FOUND")
-    field(VAL, "0")
+    field(ZNAM, "NO")
+    field(ONAM, "YES")
+    field(ZSV, "NO_ALARM")
+    field(OSV, "MINOR")
     field(SCAN, "I/O Intr")
 }
 

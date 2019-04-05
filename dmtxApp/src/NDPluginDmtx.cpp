@@ -125,13 +125,15 @@ asynStatus NDPluginDmtx::decode_dmtx_image(){
 	if(this->dmtxRegion != NULL){
 		this->message = dmtxDecodeMatrixRegion(this->dmtxDecode, this->dmtxRegion, DmtxUndefined);
 		if(this->message != NULL){
-			fputs("output: \"", stdout);
-            fwrite(this->message->output, sizeof(unsigned  char),  this->message->outputIdx, stdout);
-            fputs("\"\n", stdout);
-			//char buf[256];
-			//memcpy(buf, message->output, message->outputIdx);
-			//out_message = buf;
-			//setStringParam(NDPluginDmtxCodeMessage, out_message);
+			int number_codes;
+			char decoded_message[256];
+			//fputs("output: \"", stdout);
+            //fwrite(this->message->output, sizeof(unsigned  char),  this->message->outputIdx, stdout);
+            //fputs("\"\n", stdout);
+			epicsSnprintf(decoded_message, sizeof(decoded_message), "%s", this->message->output);
+			setStringParam(NDPluginDmtxCodeMessage, decoded_message);
+			getIntegerParam(NDPluginDmtxNumberCodes, &number_codes);
+			setIntegerParam(NDPluginDmtxNumberCodes, number_codes + 1);
 			setIntegerParam(NDPluginDmtxCodeFound, 1);
 		}
 		else{
