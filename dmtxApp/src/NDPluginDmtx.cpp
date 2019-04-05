@@ -155,7 +155,7 @@ void static process_frame_wrapper(void* obj_instance, NDArray* pArray){
 
 void NDPluginDmtx::process_incoming_frame(NDArray* pArray){
 	const char* functionName = "process_incoming_frame";
-	printf("started processing thread\n");
+	//printf("started processing thread\n");
 	NDArrayInfo arrayInfo;
 	pArray->getInfo(&arrayInfo);
 	asynStatus status = init_dmtx_structs(pArray, arrayInfo.xSize, arrayInfo.ySize);
@@ -168,7 +168,7 @@ void NDPluginDmtx::process_incoming_frame(NDArray* pArray){
 		}
 	}
 	this->processing = false;
-	printf("finished processing thread");
+	//printf("finished processing thread\n");
 }
 
 
