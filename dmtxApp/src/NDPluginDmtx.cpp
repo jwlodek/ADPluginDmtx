@@ -85,8 +85,6 @@ asynStatus NDPluginDmtx::init_dmtx_structs(NDArray* pArray, size_t width, size_t
 				return asynError;
 		}
 	}
-	else if(ndColorMode == NDColorModeMono && (ndDataType == NDUInt8 || ndDataType == NDUInt16))
-		packOrder = DmtxPackCustom;
 	else{
 		asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s::%s Error unsupported data type + color mode combo\n", pluginName, functionName);
 		return asynError;
@@ -95,19 +93,6 @@ asynStatus NDPluginDmtx::init_dmtx_structs(NDArray* pArray, size_t width, size_t
 	if(this->dmtxImage == NULL){
 		asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s::%s Error unable to allocate image\n", pluginName, functionName);
 		return asynError;
-	}
-	else if(ndColorMode == NDColorModeMono){
-		switch(ndDataType){
-			case NDUInt8:
-				this->dmtxImage->bytesPerPixel = 8;
-				break;
-			case NDUInt16:
-				this->dmtxImage->bytesPerPixel = 16;
-				break;
-			default:
-				this->dmtxImage->bytesPerPixel = 32;
-				break;
-		}
 	}
 	this->dmtxDecode = dmtxDecodeCreate(this->dmtxImage, 1);
 	if(this->dmtxDecode == NULL){
