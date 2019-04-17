@@ -85,8 +85,9 @@ asynStatus NDPluginDmtx::init_dmtx_structs(NDArray* pArray, size_t width, size_t
 				return asynError;
 		}
 	}
-	else if(ndColorMode == NDColorModeMono && (ndDataType == NDUInt8 || ndDataType == NDUInt16))
+	else if(ndColorMode == NDColorModeMono && (ndDataType == NDUInt8 || ndDataType == NDUInt16)){
 		packOrder = DmtxPackCustom;
+	}
 	else{
 		asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s::%s Error unsupported data type + color mode combo\n", pluginName, functionName);
 		return asynError;
@@ -99,13 +100,22 @@ asynStatus NDPluginDmtx::init_dmtx_structs(NDArray* pArray, size_t width, size_t
 	else if(ndColorMode == NDColorModeMono){
 		switch(ndDataType){
 			case NDUInt8:
-				this->dmtxImage->bytesPerPixel = 8;
+				this->dmtxImage->bitsPerPixel = 8;
+				this->dmtxImage->bytesPerPixel = 1;
+				this->dmtxImage->rowSizeBytes = this->dmtxImage->width * this->dmtxImage->bytesPerPixel;
+				dmtxImageSetChannel(this->dmtxImage, 0, 18);
 				break;
 			case NDUInt16:
-				this->dmtxImage->bytesPerPixel = 16;
+				this->dmtxImage->bitsPerPixel = 16;
+				this->dmtxImage->bytesPerPixel = 2;
+				this->dmtxImage->rowSizeBytes = this->dmtxImage->width * this->dmtxImage->bytesPerPixel;
+				//dmtxImageSetChannel(this->dmtxImage, 0, 16);
 				break;
 			default:
-				this->dmtxImage->bytesPerPixel = 32;
+				this->dmtxImage->bitsPerPixel = 32;
+				this->dmtxImage->bytesPerPixel = 4;
+				this->dmtxImage->rowSizeBytes = this->dmtxImage->width * this->dmtxImage->bytesPerPixel;
+				dmtxImageSetChannel(this->dmtxImage, 0, 32);
 				break;
 		}
 	}
