@@ -5,30 +5,57 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <title>ADPluginDmtx Documentation</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="css/main.css" />
 </head>
 <body>
-    <h1 style="font-size: 40px">ADPluginDmtx Documentation</h1>
-    <h3>Author: </h3>
-    <h3>Corresponding Author: </h3>
-    <hr/>
-    <h3>Installing the plugin</h3>
-    <p>The ADPluginDmtx plugin depends on several external libraries. These include:</p>
-    <ul>
-        <li>EPICS, Area Detector, and their submodules, all of whuch can be found on github.</li>
-    </ul>
-    <p>Further installation instructions are located in the README.md file in the top level of this repository.</p>
-    <hr/>
-    <h3>Using ADPluginDmtx</h3>
 
+
+<h1>ADPluginDmtx</h1>
+<p>Author: Jakub Wlodek</p>
+<p>Copyright (c): Brookhaven Science Associates 2019</p>
+<p>An EPICS areaDetector Plugin for reading data matrix barcodes.</p>
+<p><strong>NOTE: This plugin was built with the help of <a href="https://github.com/epicsNSLS2-areaDetector/ADPluginTemplate">ADPluginTemplate</a></strong></p>
+<h3>Installation</h3>
+<p>To install ADPluginDmtx, start by installing its dependencies: <code>libdmtx</code>, <code>ADSupport</code>, and <code>ADCore</code>. Libdmtx can be installed on a debian-based system through apt:
+<code>sudo apt install libdmtx-dev</code>
+Alternatively, build it from <a href="https://github.com/dmtx/libdmtx">source</a>.</p>
+
+<p>The next steps for installing ADPluginDmtx involve configuration of local AD installation, please check the README in the 
+    <a href = "https://github.com/epicsNSLS2-areaDetector/ADPluginDmtx">github repository</a> for details.
+</p>
+<p>You may now build <code>ADCore</code>, <code>ADPluginDmtx</code>, and any driver in that order. Remember to add ADPluginDmtx to the <code>envPaths</code> before running the driver IOC.</p>
+<h3>Usage</h3>
+<p>ADPluginDmtx currently only supports 8 bit RGB images. 
+    This limitation can be circumvented by usng 
+    <a href="https://github.com/epicsNSLS2-areaDetector/ADCompVision">ADCompVision</a>, 
+    and its Convert Format function. To use ADPluginDmtx, simply run the driver IOC, 
+    pass the array port to ADPluginDmtx, and enable the plugin. If a code is detected, 
+    it will be decoded, the counter will be incremented, and the code detected flag will be set 
+    to <code>YES</code>. From here, you may grab the code messgae from the appropriate PV.</p>
+
+    <img src="screenshots/cssScreenExample.png" width="1000" height="auto" alt="ADPluginDmtx CSS Screen" />
     <hr/>
     <h3>Release Notes</h3>
-
     <!--RELEASE START-->
 
+<h4>R0-1 (17-April-2019)</h4>
+<ul>
+<li>Initial release of ADPluginDmtx</li>
+<li>Features:<ul>
+<li>Decoding Data Matrix Barcodes</li>
+<li>Barcode detected flag</li>
+<li>Number Barcodes detected counter</li>
+<li>Custom CSS screen</li>
+</ul>
+</li>
+<li>Limitations<ul>
+<li>Currently only supports 8 bit RGB images. This can be circumvented by using ADCompVision and Convert Format.</li>
+<li>Detection Uses Threads to allow the plugin to decode codes without blocking. However, this means there can be a slight delay to responsiveness of the plugin to the image displayed on the screen</li>
+</ul>
+</li>
+</ul>
     <!--RELEASE END-->
-    
     <hr/>
-    <h3>Code Documentation</h3>
 
     
     <h5>ADPluginDmtx File structure</h5>
@@ -38,6 +65,6 @@
     <p>More detailed documentation can be found in the plugin Src.</p>
 
 
-    <h3>copyright: </h3>
+    <h3>copyright: Brookhaven Science Associates 2019</h3>
 </body>
 </html>
