@@ -31,7 +31,7 @@ using namespace std;
 
 
 typedef struct NDDmtxJobProcessor {
-    thread processing_thread;
+    thread* processing_thread;
     NDArray* pScratch;
     bool processing;
 } NDDmtxJobProcessor_t;
@@ -45,7 +45,7 @@ class NDPluginDmtx : public NDPluginDriver
                  const char *NDArrayPort, int NDArrayAddr, int maxBuffers,
                  size_t maxMemory, int priority, int stackSize);
 
-    ~NDPluginDmtx();
+    //~NDPluginDmtx();
 
     void processCallbacks(NDArray *pArray);
     void process_incoming_frame(NDArray *pArray);
@@ -78,7 +78,7 @@ class NDPluginDmtx : public NDPluginDriver
     // variables for processing thread
     bool run_processing_thread;
 
-    NDDmtxJobProcessor_t dmtxProcessor;
+    NDDmtxJobProcessor_t* dmtxProcessor;
 
     // init all plugin additional functions here
 

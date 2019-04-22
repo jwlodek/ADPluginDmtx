@@ -34,7 +34,6 @@ using namespace std;
 static const char *pluginName = "NDPluginDmtx";
 
 
-
 /**
  * Override of NDPluginDriver function. Must be implemented by your plugin
  * 
@@ -136,33 +135,19 @@ asynStatus NDPluginDmtx::decode_dmtx_image() {
 }
 
 
-
-void process_thread_loop_wrapper(void *obj_inst) {
-    NDPluginDmtx *pPlugin = (NDPluginDmtx *)obj_inst;
-    pPlugin->process_thread_loop();
-}
-
-
-
 void NDPluginDmtx::process_thread_loop() {
-    while (this->run_processing_thread) {
-        if (this->dmtxProcessor.pScratch != NULL) {
-            this->dmtxProcessor.processing = true;
-            this->process_incoming_frame(this->dmtxProcessor.pScratch);
-            this->dmtxProcessor.pScratch.release();
-            this->dmtxProcessor.pScratch = NULL;
-            this->dmtxProcessor.processing = false;
+    printf("Starting processing thread for NDPluginDmtx...\n");
+    while (1) {
+        if (this->dmtxProcessor->pScratch != NULL) {
+            printf("Image being processed for dmtx codes...\n");
+            this->dmtxProcessor->processing = true;
+            this->process_incoming_frame(this->dmtxProcessor->pScratch);
+            this->dmtxProcessor->pScratch->release();
+            this->dmtxProcessor->pScratch = NULL;
+            this->dmtxProcessor->processing = false;
         }
     }
 }
-
-
-
-void static process_frame_wrapper(void *obj_instance, NDArray *pArray) {
-    NDPluginDmtx *pPlugin = (NDPluginDmtx *)obj_instance;
-    pPlugin->process_incoming_frame(pArray);
-}
-
 
 
 void NDPluginDmtx::process_incoming_frame(NDArray *pArray) {
@@ -181,7 +166,6 @@ void NDPluginDmtx::process_incoming_frame(NDArray *pArray) {
             dmtxMessageDestroy(&(this->message));
         }
     }
-    this->processing = false;
     //printf("finished processing thread\n");
 }
 
@@ -209,12 +193,12 @@ void NDPluginDmtx::processCallbacks(NDArray *pArray) {
     //unlock the mutex for the processing portion
     this->unlock();
 
-    if (!this->dmtxProcessor.processing) {
+    if (!this->dmtxProcessor->processing) {
         //        this->processing = true;
         //        thread processing_thread(process_frame_wrapper, this, pArray);
         //        processing_thread.detach();
-        getIntegerParam(NDColorMode, colorMode);
-        getIntegerParam(NDDataType, dataType);
+        getIntegerParam(NDColorMode, &colorMode);
+        getIntegerParam(NDDataType, &dataType);
         if ((NDColorMode_t)colorMode != NDColorModeRGB1 || (NDDataType_t)dataType != NDUInt8) {
             asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s::%s Error, unsupported color mode or data type\n", pluginName, functionName);
             return;
@@ -222,14 +206,14 @@ void NDPluginDmtx::processCallbacks(NDArray *pArray) {
         pArray->getInfo(&arrayInfo);
         size_t dims[ndims];
         dims[0] = ndims;
-        dims[1] = arrayInfo.width;
-        dims[2] = arrayInfo.height;
+        dims[1] = arrayInfo.xSize;
+        dims[2] = arrayInfo.ySize;
 
 
         this->pArrays[0] = pNDArrayPool->alloc(ndims, dims, (NDDataType_t) dataType, 0, NULL);
         if(this->pArrays[0] != NULL){
             memcpy(this->pArrays[0]->pData, pArray->pData, arrayInfo.totalBytes);
-            this->dmtxProcessor.pScratch = this->pArrays[0];
+            this->dmtxProcessor->pScratch = this->pArrays[0];
         }
         else{
             this->pArrays[0]->release();
@@ -261,9 +245,12 @@ NDPluginDmtx::NDPluginDmtx(const char *portName, int queueSize, int blockingCall
                      ASYN_MULTIDEVICE, 1, priority, stackSize, 1) {
     // Create the job processing thread
     this->run_processing_thread = true;
-    &(this->dmtxProcessor) = (NDDmtxJobProcessor_t *)malloc(sizeof(NDDmtxJobProcessor_t));
-    this->dmtxProcessor.processing = false;
-    this->dmtxProcessor.processing_thread = thread(process_thread_loop_wrapper, this);
+    this->dmtxProcessor = (NDDmtxJobProcessor_t *) malloc(sizeof(NDDmtxJobProcessor_t));
+    this->dmtxProcessor->processing = false;
+    this->dmtxProcessor->pScratch = NULL;
+    printf("Got to thread create\n");
+    this->dmtxProcessor->processing_thread = new thread(&NDPluginDmtx::process_thread_loop, this);
+    printf("Created thread...\n");
 
     // PV parameters
     createParam(NDPluginDmtxCodeFoundString, asynParamInt32, &NDPluginDmtxCodeFound);
@@ -278,10 +265,12 @@ NDPluginDmtx::NDPluginDmtx(const char *portName, int queueSize, int blockingCall
     connectToArrayPort();
 }
 
+/*
 NDPluginDmtx::~NDPluginDmtx() {
     this->run_processing_thread = false;
-    this->dmtxProcessor.processing_thread.join();
+    this->dmtxProcessor->processing_thread.join();
 }
+*/
 
 /**
  * External configure function. This will be called from the IOC shell of the
@@ -320,6 +309,8 @@ static const iocshArg *const initArgs[] = {&initArg0,
 
 // Define the path to your plugin's extern configure function above
 static const iocshFuncDef initFuncDef = {"NDDmtxConfigure", 9, initArgs};
+
+
 
 /* link the configure function with the passed args, and call it from the IOC shell */
 static void initCallFunc(const iocshArgBuf *args) {
