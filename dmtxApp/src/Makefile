@@ -13,6 +13,8 @@ ifeq (vxWorks,$(findstring vxWorks, $(T_A)))
 	CODE_CXXFLAGS=
 endif
 
+CODE_CXXFLAGS=-std=c++11
+
 DBD += NDPluginDmtx.dbd
 
 INC += NDPluginDmtx.h
@@ -22,10 +24,10 @@ LIBRARY_IOC += NDPluginDmtx
 NDPluginDmtx_SRCS += NDPluginDmtx.cpp
 
 ifdef DMTX_INCLUDE
-	USR_INCLUDES += -I$(DMTX_INCLUDE)
+    USR_INCLUDES += -I$(DMTX_INCLUDE)
 endif
 ifdef DMTX_LIB
-	NDPluginDmtx_DIR += $(DMTX_LIB)
+    NDPluginDmtx_DIR += $(DMTX_LIB)
 endif
 
 include $(AREA_DETECTOR)/ADCore/ADApp/commonLibraryMakefile
