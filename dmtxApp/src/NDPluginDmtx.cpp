@@ -9,11 +9,11 @@
  */
 
 //include some standard libraries
+#include <math.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 #include <iostream>
-#include <stdio.h>
 #include <thread>
 
 //include epics/area detector libraries
@@ -22,8 +22,8 @@
 #include <iocsh.h>
 #include "NDArray.h"
 // Include your plugin's header file here
-#include "NDPluginDmtx.h"
 #include <epicsExport.h>
+#include "NDPluginDmtx.h"
 
 // include your external dependency libraries here
 
@@ -33,6 +33,8 @@ using namespace std;
 // Name your plugin
 static const char *pluginName = "NDPluginDmtx";
 
+
+
 /**
  * Override of NDPluginDriver function. Must be implemented by your plugin
  * 
@@ -40,8 +42,7 @@ static const char *pluginName = "NDPluginDmtx";
  * @params[in]: value		-> value PV was set to
  * @return: success if PV was updated correctly, otherwise error
  */
-asynStatus NDPluginDmtx::writeInt32(asynUser *pasynUser, epicsInt32 value)
-{
+asynStatus NDPluginDmtx::writeInt32(asynUser *pasynUser, epicsInt32 value) {
     const char *functionName = "writeInt32";
     int function = pasynUser->reason;
     asynStatus status = asynSuccess;
@@ -50,20 +51,19 @@ asynStatus NDPluginDmtx::writeInt32(asynUser *pasynUser, epicsInt32 value)
     asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s::%s function = %d value=%d\n", pluginName, functionName, function, value);
 
     // replace PLUGINNAME with your plugin (ex. BAR)
-    if (function < ND_DMTX_FIRST_PARAM)
-    {
+    if (function < ND_DMTX_FIRST_PARAM) {
         status = NDPluginDriver::writeInt32(pasynUser, value);
     }
     callParamCallbacks();
-    if (status)
-    {
+    if (status) {
         asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s::%s Error writing Int32 val to PV\n", pluginName, functionName);
     }
     return status;
 }
 
-asynStatus NDPluginDmtx::init_dmtx_structs(NDArray *pArray, size_t width, size_t height)
-{
+
+
+asynStatus NDPluginDmtx::init_dmtx_structs(NDArray *pArray, size_t width, size_t height) {
     const char *functionName = "init_dmtx_structs";
     int dataType, colorMode;
     getIntegerParam(NDDataType, &dataType);
@@ -71,32 +71,26 @@ asynStatus NDPluginDmtx::init_dmtx_structs(NDArray *pArray, size_t width, size_t
     NDDataType_t ndDataType = (NDDataType_t)dataType;
     NDColorMode_t ndColorMode = (NDColorMode_t)colorMode;
     DmtxPackOrder packOrder;
-    if (ndColorMode == NDColorModeRGB1)
-    {
-        switch (ndDataType)
-        {
-        case NDUInt8:
-            packOrder = DmtxPack24bppRGB;
-            break;
-        default:
-            asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s::%s Error unsupported data type + color mode combo\n", pluginName, functionName);
-            return asynError;
+    if (ndColorMode == NDColorModeRGB1) {
+        switch (ndDataType) {
+            case NDUInt8:
+                packOrder = DmtxPack24bppRGB;
+                break;
+            default:
+                asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s::%s Error unsupported data type + color mode combo\n", pluginName, functionName);
+                return asynError;
         }
-    }
-    else
-    {
+    } else {
         asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s::%s Error unsupported data type + color mode combo\n", pluginName, functionName);
         return asynError;
     }
     this->dmtxImage = dmtxImageCreate((unsigned char *)pArray->pData, width, height, packOrder);
-    if (this->dmtxImage == NULL)
-    {
+    if (this->dmtxImage == NULL) {
         asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s::%s Error unable to allocate image\n", pluginName, functionName);
         return asynError;
     }
     this->dmtxDecode = dmtxDecodeCreate(this->dmtxImage, 1);
-    if (this->dmtxDecode == NULL)
-    {
+    if (this->dmtxDecode == NULL) {
         dmtxImageDestroy(&(this->dmtxImage));
         asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s::%s Error unable to allocate decoder\n", pluginName, functionName);
         return asynError;
@@ -104,15 +98,14 @@ asynStatus NDPluginDmtx::init_dmtx_structs(NDArray *pArray, size_t width, size_t
     return asynSuccess;
 }
 
-asynStatus NDPluginDmtx::decode_dmtx_image()
-{
+
+
+asynStatus NDPluginDmtx::decode_dmtx_image() {
     const char *functionName = "decode_dmtx_image";
     this->dmtxRegion = dmtxRegionFindNext(this->dmtxDecode, NULL);
-    if (this->dmtxRegion != NULL)
-    {
+    if (this->dmtxRegion != NULL) {
         this->message = dmtxDecodeMatrixRegion(this->dmtxDecode, this->dmtxRegion, DmtxUndefined);
-        if (this->message != NULL)
-        {
+        if (this->message != NULL) {
             int number_codes;
             char decoded_message[256];
             //fputs("output: \"", stdout);
@@ -123,30 +116,56 @@ asynStatus NDPluginDmtx::decode_dmtx_image()
             getIntegerParam(NDPluginDmtxNumberCodes, &number_codes);
             setIntegerParam(NDPluginDmtxNumberCodes, number_codes + 1);
             setIntegerParam(NDPluginDmtxCodeFound, 1);
-        }
-        else
-        {
             dmtxRegionDestroy(&(this->dmtxRegion));
+            dmtxDecodeDestroy(&(this->dmtxDecode));
+            dmtxImageDestroy(&(this->dmtxImage));
+        } else {
+            dmtxRegionDestroy(&(this->dmtxRegion));
+            dmtxDecodeDestroy(&(this->dmtxDecode));
+            dmtxImageDestroy(&(this->dmtxImage));
             setIntegerParam(NDPluginDmtxCodeFound, 0);
             return asynError;
         }
-    }
-    else
-    {
+    } else {
+        dmtxDecodeDestroy(&(this->dmtxDecode));
+        dmtxImageDestroy(&(this->dmtxImage));
         setIntegerParam(NDPluginDmtxCodeFound, 0);
         return asynDisabled;
     }
     return asynSuccess;
 }
 
-void static process_frame_wrapper(void *obj_instance, NDArray *pArray)
-{
+
+
+void process_thread_loop_wrapper(void *obj_inst) {
+    NDPluginDmtx *pPlugin = (NDPluginDmtx *)obj_inst;
+    pPlugin->process_thread_loop();
+}
+
+
+
+void NDPluginDmtx::process_thread_loop() {
+    while (this->run_processing_thread) {
+        if (this->dmtxProcessor.pScratch != NULL) {
+            this->dmtxProcessor.processing = true;
+            this->process_incoming_frame(this->dmtxProcessor.pScratch);
+            this->dmtxProcessor.pScratch.release();
+            this->dmtxProcessor.pScratch = NULL;
+            this->dmtxProcessor.processing = false;
+        }
+    }
+}
+
+
+
+void static process_frame_wrapper(void *obj_instance, NDArray *pArray) {
     NDPluginDmtx *pPlugin = (NDPluginDmtx *)obj_instance;
     pPlugin->process_incoming_frame(pArray);
 }
 
-void NDPluginDmtx::process_incoming_frame(NDArray *pArray)
-{
+
+
+void NDPluginDmtx::process_incoming_frame(NDArray *pArray) {
     const char *functionName = "process_incoming_frame";
     //printf("started processing thread\n");
     NDArrayInfo arrayInfo;
@@ -154,13 +173,11 @@ void NDPluginDmtx::process_incoming_frame(NDArray *pArray)
     asynStatus status = init_dmtx_structs(pArray, arrayInfo.xSize, arrayInfo.ySize);
     if (status == asynError)
         asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s::%s Error, unable to initialize decoder\n", pluginName, functionName);
-    else
-    {
+    else {
         status = decode_dmtx_image();
         if (status == asynDisabled)
             asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s::%s No code found in image\n", pluginName, functionName);
-        else if (status == asynSuccess)
-        {
+        else if (status == asynSuccess) {
             dmtxMessageDestroy(&(this->message));
         }
     }
@@ -168,17 +185,23 @@ void NDPluginDmtx::process_incoming_frame(NDArray *pArray)
     //printf("finished processing thread\n");
 }
 
+
+
 /* Process callbacks function inherited from NDPluginDriver.
  * You must implement this function for your plugin to accept NDArrays
  *
  * @params[in]: pArray -> NDArray recieved by the plugin from the camera
  * @return: void
 */
-void NDPluginDmtx::processCallbacks(NDArray *pArray)
-{
+void NDPluginDmtx::processCallbacks(NDArray *pArray) {
     static const char *functionName = "processCallbacks";
     asynStatus status = asynSuccess;
     int code_found;
+
+    NDArrayInfo arrayInfo;
+    int dataType;
+    int colorMode;
+    int ndims = 3;
 
     //call base class and get information about frame
     NDPluginDriver::beginProcessCallbacks(pArray);
@@ -186,18 +209,38 @@ void NDPluginDmtx::processCallbacks(NDArray *pArray)
     //unlock the mutex for the processing portion
     this->unlock();
 
-    if (!this->processing)
-    {
+    if (!this->dmtxProcessor.processing) {
+        //        this->processing = true;
+        //        thread processing_thread(process_frame_wrapper, this, pArray);
+        //        processing_thread.detach();
+        getIntegerParam(NDColorMode, colorMode);
+        getIntegerParam(NDDataType, dataType);
+        if ((NDColorMode_t)colorMode != NDColorModeRGB1 || (NDDataType_t)dataType != NDUInt8) {
+            asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s::%s Error, unsupported color mode or data type\n", pluginName, functionName);
+            return;
+        }
+        pArray->getInfo(&arrayInfo);
+        size_t dims[ndims];
+        dims[0] = ndims;
+        dims[1] = arrayInfo.width;
+        dims[2] = arrayInfo.height;
 
-        this->processing = true;
-        thread processing_thread(process_frame_wrapper, this, pArray);
-        processing_thread.detach();
+
+        this->pArrays[0] = pNDArrayPool->alloc(ndims, dims, (NDDataType_t) dataType, 0, NULL);
+        if(this->pArrays[0] != NULL){
+            memcpy(this->pArrays[0]->pData, pArray->pData, arrayInfo.totalBytes);
+            this->dmtxProcessor.pScratch = this->pArrays[0];
+        }
+        else{
+            this->pArrays[0]->release();
+            asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s::%s Error, unable to allocate frame correctly\n", pluginName, functionName);
+            return;
+        }
     }
 
     this->lock();
 
-    if (status == asynError)
-    {
+    if (status == asynError) {
         asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s::%s Error, image not processed correctly\n", pluginName, functionName);
         return;
     }
@@ -215,19 +258,29 @@ NDPluginDmtx::NDPluginDmtx(const char *portName, int queueSize, int blockingCall
                      NDArrayPort, NDArrayAddr, 1, maxBuffers, maxMemory,
                      asynInt32ArrayMask | asynFloat64ArrayMask | asynGenericPointerMask,
                      asynInt32ArrayMask | asynFloat64ArrayMask | asynGenericPointerMask,
-                     ASYN_MULTIDEVICE, 1, priority, stackSize, 1)
-{
+                     ASYN_MULTIDEVICE, 1, priority, stackSize, 1) {
+    // Create the job processing thread
+    this->run_processing_thread = true;
+    &(this->dmtxProcessor) = (NDDmtxJobProcessor_t *)malloc(sizeof(NDDmtxJobProcessor_t));
+    this->dmtxProcessor.processing = false;
+    this->dmtxProcessor.processing_thread = thread(process_thread_loop_wrapper, this);
 
+    // PV parameters
     createParam(NDPluginDmtxCodeFoundString, asynParamInt32, &NDPluginDmtxCodeFound);
     createParam(NDPluginDmtxCodeMessageString, asynParamOctet, &NDPluginDmtxCodeMessage);
     createParam(NDPluginDmtxNumberCodesString, asynParamInt32, &NDPluginDmtxNumberCodes);
 
+    // Version info and start the plugin
     char versionString[25];
-
     setStringParam(NDPluginDriverPluginType, "NDPluginDmtx");
     epicsSnprintf(versionString, sizeof(versionString), "%d.%d.%d", DMTX_VERSION, DMTX_REVISION, DMTX_MODIFICATION);
     setStringParam(NDDriverVersion, versionString);
     connectToArrayPort();
+}
+
+NDPluginDmtx::~NDPluginDmtx() {
+    this->run_processing_thread = false;
+    this->dmtxProcessor.processing_thread.join();
 }
 
 /**
@@ -239,9 +292,7 @@ NDPluginDmtx::NDPluginDmtx(const char *portName, int queueSize, int blockingCall
 extern "C" int NDDmtxConfigure(const char *portName, int queueSize, int blockingCallbacks,
                                const char *NDArrayPort, int NDArrayAddr,
                                int maxBuffers, size_t maxMemory,
-                               int priority, int stackSize)
-{
-
+                               int priority, int stackSize) {
     NDPluginDmtx *pPlugin = new NDPluginDmtx(portName, queueSize, blockingCallbacks, NDArrayPort, NDArrayAddr,
                                              maxBuffers, maxMemory, priority, stackSize);
     return pPlugin->start();
@@ -271,21 +322,18 @@ static const iocshArg *const initArgs[] = {&initArg0,
 static const iocshFuncDef initFuncDef = {"NDDmtxConfigure", 9, initArgs};
 
 /* link the configure function with the passed args, and call it from the IOC shell */
-static void initCallFunc(const iocshArgBuf *args)
-{
+static void initCallFunc(const iocshArgBuf *args) {
     NDDmtxConfigure(args[0].sval, args[1].ival, args[2].ival,
                     args[3].sval, args[4].ival, args[5].ival,
                     args[6].ival, args[7].ival, args[8].ival);
 }
 
 /* function to register the configure function in the IOC shell */
-extern "C" void NDDmtxRegister(void)
-{
+extern "C" void NDDmtxRegister(void) {
     iocshRegister(&initFuncDef, initCallFunc);
 }
 
 /* Exports plugin registration */
-extern "C"
-{
-    epicsExportRegistrar(NDDmtxRegister);
+extern "C" {
+epicsExportRegistrar(NDDmtxRegister);
 }

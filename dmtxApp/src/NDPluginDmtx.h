@@ -29,6 +29,14 @@ using namespace std;
 
 // define all necessary structs and enums here
 
+
+typedef struct NDDmtxJobProcessor {
+    thread processing_thread;
+    NDArray* pScratch;
+    bool processing;
+} NDDmtxJobProcessor_t;
+
+
 /* Plugin class, extends plugin driver */
 class NDPluginDmtx : public NDPluginDriver
 {
@@ -37,10 +45,11 @@ class NDPluginDmtx : public NDPluginDriver
                  const char *NDArrayPort, int NDArrayAddr, int maxBuffers,
                  size_t maxMemory, int priority, int stackSize);
 
-    //~NDPlugin___();
+    ~NDPluginDmtx();
 
     void processCallbacks(NDArray *pArray);
     void process_incoming_frame(NDArray *pArray);
+    void process_thread_loop();
 
     virtual asynStatus writeInt32(asynUser *pasynUser, epicsInt32 value);
 
@@ -67,7 +76,9 @@ class NDPluginDmtx : public NDPluginDriver
     DmtxMessage *message;
 
     // variables for processing thread
-    bool processing = false;
+    bool run_processing_thread;
+
+    NDDmtxJobProcessor_t dmtxProcessor;
 
     // init all plugin additional functions here
 
