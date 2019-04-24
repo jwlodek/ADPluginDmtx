@@ -38,6 +38,22 @@ Alternatively, build it from <a href="https://github.com/dmtx/libdmtx">source</a
     <h3>Release Notes</h3>
     <!--RELEASE START-->
 
+<h4>R0-2 (24-April-2019)</h4>
+<ul>
+<li>Features Added:<ul>
+<li>Updated Documentation</li>
+<li>Proper memory cleanup after deinitialization</li>
+<li>Improved threading</li>
+</ul>
+</li>
+<li>Bugs Fixed:<ul>
+<li>Fixed serious memory leak that occured when codes were not being detected</li>
+<li>Removed code that caused compiler warnings - cleaner compile</li>
+<li>Updated Makefile to allow compilation on Operating systems that use earlier std lib than c++11 by default.</li>
+<li>Fixed problem where the number codes PV was incremented regardless if the detected code was the same as the previous one.</li>
+</ul>
+</li>
+</ul>
 <h4>R0-1 (17-April-2019)</h4>
 <ul>
 <li>Initial release of ADPluginDmtx</li>
