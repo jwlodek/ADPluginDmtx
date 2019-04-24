@@ -20,7 +20,7 @@ using namespace std;
 
 //version numbers
 #define DMTX_VERSION 0
-#define DMTX_REVISION 1
+#define DMTX_REVISION 2
 #define DMTX_MODIFICATION 0
 
 #define NDPluginDmtxCodeFoundString "CODE_FOUND"     //asynParamInt32
@@ -45,9 +45,7 @@ class NDPluginDmtx : public NDPluginDriver
     virtual asynStatus writeInt32(asynUser *pasynUser, epicsInt32 value);
 
   protected:
-    //in this section i define the coords of database vals
-
-    //Place PV indexes here, define first and last as appropriate, replace PLUGINNAME with name,
+    //in this section I define the coords of database vals
 
     int NDPluginDmtxNumberCodes;
 
@@ -60,7 +58,8 @@ class NDPluginDmtx : public NDPluginDriver
     #define ND_DMTX_LAST_PARAM NDPluginDmtxCodeFound
 
   private:
-    // init all global variables here
+
+    // init all plugin-specific variables here
     DmtxImage *dmtxImage;
     DmtxDecode *dmtxDecode;
     DmtxRegion *dmtxRegion;
@@ -70,12 +69,11 @@ class NDPluginDmtx : public NDPluginDriver
     bool processing = false;
 
     // init all plugin additional functions here
-
     asynStatus init_dmtx_structs(NDArray *pArray, size_t width, size_t height);
+    void clear_dmtx_structs();
     asynStatus decode_dmtx_image();
 };
 
-// Replace PLUGINNAME with plugin name ex. BAR
 #define NUM_DMTX_PARAMS ((int)(&ND_DMTX_LAST_PARAM - &ND_DMTX_FIRST_PARAM + 1))
 
 #endif
