@@ -70,7 +70,6 @@ asynStatus NDPluginDmtx::writeInt32(asynUser *pasynUser, epicsInt32 value) {
 }
 
 
-
 /**
  * Function that initializes libdmtx structs used for decoding thedata matrix barcodes found in
  * the image. Structures initialized include DmtxImage and DmtxDecode
@@ -78,9 +77,10 @@ asynStatus NDPluginDmtx::writeInt32(asynUser *pasynUser, epicsInt32 value) {
  * @params[in]: pArray  -> Pointer to input array
  * @params[in]: width   -> width of the input array
  * @params[in]: height  -> height of the input array
+ * @params[out]: dmtxData -> A structure containing initialized dmtx structs
  * @return: asynError if couldn't initialize structs, otherwise success
  */
-asynStatus NDPluginDmtx::init_dmtx_structs(NDArray *pArray, size_t width, size_t height) {
+asynStatus NDPluginDmtx::init_dmtx_structs(NDArray *pArray, size_t width, size_t height, ADDmtxData_t* dmtxData) {
     const char *functionName = "init_dmtx_structs";
     int dataType, colorMode;
     getIntegerParam(NDDataType, &dataType);
@@ -101,14 +101,14 @@ asynStatus NDPluginDmtx::init_dmtx_structs(NDArray *pArray, size_t width, size_t
         asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s::%s Error unsupported data type + color mode combo\n", pluginName, functionName);
         return asynError;
     }
-    this->dmtxImage = dmtxImageCreate((unsigned char *)pArray->pData, width, height, packOrder);
-    if (this->dmtxImage == NULL) {
+    dmtxData->dmtxImage = dmtxImageCreate((unsigned char *)pArray->pData, width, height, packOrder);
+    if (dmtxData->dmtxImage == NULL) {
         asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s::%s Error unable to allocate image\n", pluginName, functionName);
         return asynError;
     }
-    this->dmtxDecode = dmtxDecodeCreate(this->dmtxImage, 1);
-    if (this->dmtxDecode == NULL) {
-        dmtxImageDestroy(&(this->dmtxImage));
+    dmtxData->dmtxDecode = dmtxDecodeCreate(dmtxData->dmtxImage, 1);
+    if (dmtxData->dmtxDecode == NULL) {
+        dmtxImageDestroy(&(dmtxData->dmtxImage));
         asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s::%s Error unable to allocate decoder\n", pluginName, functionName);
         return asynError;
     }
@@ -116,20 +116,19 @@ asynStatus NDPluginDmtx::init_dmtx_structs(NDArray *pArray, size_t width, size_t
 }
 
 
-
 /**
  * Function that frees memory allocated to the
  * libdmtx structs used in the decoding process
  * 
+ * @params[in]: dmtxData -> structure containing all dmtx data
  * @return: void
  */
-void NDPluginDmtx::clear_dmtx_structs() {
-    dmtxMessageDestroy(&(this->message));
-    dmtxRegionDestroy(&(this->dmtxRegion));
-    dmtxDecodeDestroy(&(this->dmtxDecode));
-    dmtxImageDestroy(&(this->dmtxImage));
+void NDPluginDmtx::clear_dmtx_structs(ADDmtxData_t* dmtxData) {
+    dmtxMessageDestroy(&(dmtxData->message));
+    dmtxRegionDestroy(&(dmtxData->dmtxRegion));
+    dmtxDecodeDestroy(&(dmtxData->dmtxDecode));
+    dmtxImageDestroy(&(dmtxData->dmtxImage));
 }
-
 
 
 /** 
@@ -140,15 +139,15 @@ void NDPluginDmtx::clear_dmtx_structs() {
  * 
  * @return: asynDisabled if no region found, asynError if found but cannot decode message, and success otherwise
  */
-asynStatus NDPluginDmtx::decode_dmtx_image() {
-    this->dmtxRegion = dmtxRegionFindNext(this->dmtxDecode, NULL);
-    if (this->dmtxRegion != NULL) {
-        this->message = dmtxDecodeMatrixRegion(this->dmtxDecode, this->dmtxRegion, DmtxUndefined);
-        if (this->message != NULL) {
+asynStatus NDPluginDmtx::decode_dmtx_image(ADDmtxData_t* dmtxData) {
+    dmtxData->dmtxRegion = dmtxRegionFindNext(dmtxData->dmtxDecode, NULL);
+    if (dmtxData->dmtxRegion != NULL) {
+        dmtxData->message = dmtxDecodeMatrixRegion(dmtxData->dmtxDecode, dmtxData->dmtxRegion, DmtxUndefined);
+        if (dmtxData->message != NULL) {
             int number_codes;
             char decoded_message[256];
             char current_message[256];
-            epicsSnprintf(decoded_message, sizeof(decoded_message), "%s", this->message->output);
+            epicsSnprintf(decoded_message, sizeof(decoded_message), "%s", dmtxData->message->output);
             getStringParam(NDPluginDmtxCodeMessage, 256, current_message);
             setStringParam(NDPluginDmtxCodeMessage, decoded_message);
             if(strcmp(decoded_message, current_message) != 0){
@@ -168,21 +167,6 @@ asynStatus NDPluginDmtx::decode_dmtx_image() {
 }
 
 
-
-/**
- * Static wrapper function for use with processing thread
- * 
- * @params[in]: obj_instance    -> pointer to the calling NDPluginDmtx object (this)
- * @params[in]: pArray          -> pointer to the input array
- * @return: void
- */
-void static process_frame_wrapper(void *obj_instance, NDArray *pArray) {
-    NDPluginDmtx *pPlugin = (NDPluginDmtx *)obj_instance;
-    pPlugin->process_incoming_frame(pArray);
-}
-
-
-
 /**
  * Function that processes each incoming frame (in the processing thread)
  * First, gets input array info, then inits dmtx structs. Then decodes the image, 
@@ -195,22 +179,20 @@ void NDPluginDmtx::process_incoming_frame(NDArray *pArray) {
     const char *functionName = "process_incoming_frame";
     NDArrayInfo arrayInfo;
     pArray->getInfo(&arrayInfo);
-    asynStatus status = init_dmtx_structs(pArray, arrayInfo.xSize, arrayInfo.ySize);
+    ADDmtxData_t* dmtxData = (ADDmtxData_t*) malloc(sizeof(ADDmtxData_t));
+    asynStatus status = init_dmtx_structs(pArray, arrayInfo.xSize, arrayInfo.ySize, dmtxData);
     if (status == asynError)
         asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s::%s Error, unable to initialize decoder\n", pluginName, functionName);
     else {
-        status = decode_dmtx_image();
-        clear_dmtx_structs();
+        status = decode_dmtx_image(dmtxData);
+        clear_dmtx_structs(dmtxData);
         if (status == asynDisabled)
             asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s::%s No code found in image\n", pluginName, functionName);
         else if(status == asynError)
             asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s::%s Unable to decode discovered code\n", pluginName, functionName);
     }
-    // tell the callback thread that the processing thread is done
-    asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s::%s Stopping processing thread\n", pluginName, functionName);
-    this->processing = false;
+    free(dmtxData);
 }
-
 
 
 /* Process callbacks function inherited from NDPluginDriver.
@@ -220,7 +202,7 @@ void NDPluginDmtx::process_incoming_frame(NDArray *pArray) {
  * @return: void
 */
 void NDPluginDmtx::processCallbacks(NDArray *pArray) {
-    static const char *functionName = "processCallbacks";
+    //static const char *functionName = "processCallbacks";
 
     //call base class and get information about frame
     NDPluginDriver::beginProcessCallbacks(pArray);
@@ -228,20 +210,15 @@ void NDPluginDmtx::processCallbacks(NDArray *pArray) {
     //unlock the mutex for the processing portion
     this->unlock();
 
-    // If the processing thread is done, then launch new processing thread with the current array
-    if (!this->processing) {
-        asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s::%s Starting processing thread\n", pluginName, functionName);
-        this->processing = true;
-        thread processing_thread(process_frame_wrapper, this, pArray);
-        processing_thread.detach();
-    }
+    process_incoming_frame(pArray);
 
     this->lock(); 
 
+    NDPluginDriver::endProcessCallbacks(pArray, true, true);
+    
     // Update PV values
     callParamCallbacks();
 }
-
 
 
 /**
@@ -252,13 +229,13 @@ void NDPluginDmtx::processCallbacks(NDArray *pArray) {
 NDPluginDmtx::NDPluginDmtx(const char *portName, int queueSize, int blockingCallbacks,
                            const char *NDArrayPort, int NDArrayAddr,
                            int maxBuffers, size_t maxMemory,
-                           int priority, int stackSize)
+                           int priority, int stackSize, int maxThreads)
     /* Invoke the base class constructor */
     : NDPluginDriver(portName, queueSize, blockingCallbacks,
                      NDArrayPort, NDArrayAddr, 1, maxBuffers, maxMemory,
                      asynInt32ArrayMask | asynFloat64ArrayMask | asynGenericPointerMask,
                      asynInt32ArrayMask | asynFloat64ArrayMask | asynGenericPointerMask,
-                     ASYN_MULTIDEVICE, 1, priority, stackSize, 1) {
+                     ASYN_MULTIDEVICE, 1, priority, stackSize, maxThreads) {
 
     // Initialize the PVs
     createParam(NDPluginDmtxCodeFoundString,    asynParamInt32,     &NDPluginDmtxCodeFound);
@@ -276,7 +253,6 @@ NDPluginDmtx::NDPluginDmtx(const char *portName, int queueSize, int blockingCall
 }
 
 
-
 /**
  * External configure function. This will be called from the IOC shell of the
  * detector the plugin is attached to, and will create an instance of the plugin and start it
@@ -286,15 +262,14 @@ NDPluginDmtx::NDPluginDmtx(const char *portName, int queueSize, int blockingCall
 extern "C" int NDDmtxConfigure(const char *portName, int queueSize, int blockingCallbacks,
                                const char *NDArrayPort, int NDArrayAddr,
                                int maxBuffers, size_t maxMemory,
-                               int priority, int stackSize) {
+                               int priority, int stackSize, int maxThreads) {
 
     // Create new plugin instance
     NDPluginDmtx *pPlugin = new NDPluginDmtx(portName, queueSize, blockingCallbacks, NDArrayPort, NDArrayAddr,
-                                             maxBuffers, maxMemory, priority, stackSize);
+                                             maxBuffers, maxMemory, priority, stackSize, maxThreads);
     // try to start the plugin
     return pPlugin->start();
 }
-
 
 
 /* IOC shell arguments passed to the plugin configure function */
@@ -307,6 +282,7 @@ static const iocshArg initArg5 = {"maxBuffers", iocshArgInt};
 static const iocshArg initArg6 = {"maxMemory", iocshArgInt};
 static const iocshArg initArg7 = {"priority", iocshArgInt};
 static const iocshArg initArg8 = {"stackSize", iocshArgInt};
+static const iocshArg initArg9 = {"maxThreads", iocshArgInt};
 static const iocshArg *const initArgs[] = {&initArg0,
                                            &initArg1,
                                            &initArg2,
@@ -315,29 +291,26 @@ static const iocshArg *const initArgs[] = {&initArg0,
                                            &initArg5,
                                            &initArg6,
                                            &initArg7,
-                                           &initArg8};
-
+                                           &initArg8,
+                                           &initArg9};
 
 
 // Define the path to your plugin's extern configure function above
-static const iocshFuncDef initFuncDef = {"NDDmtxConfigure", 9, initArgs};
-
+static const iocshFuncDef initFuncDef = {"NDDmtxConfigure", 10, initArgs};
 
 
 /* link the configure function with the passed args, and call it from the IOC shell */
 static void initCallFunc(const iocshArgBuf *args) {
     NDDmtxConfigure(args[0].sval, args[1].ival, args[2].ival,
                     args[3].sval, args[4].ival, args[5].ival,
-                    args[6].ival, args[7].ival, args[8].ival);
+                    args[6].ival, args[7].ival, args[8].ival, args[9].ival);
 }
-
 
 
 /* function to register the configure function in the IOC shell */
 extern "C" void NDDmtxRegister(void) {
     iocshRegister(&initFuncDef, initCallFunc);
 }
-
 
 
 /* Exports plugin registration */
