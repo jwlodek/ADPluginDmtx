@@ -20,12 +20,23 @@ using namespace std;
 
 //version numbers
 #define DMTX_VERSION 0
-#define DMTX_REVISION 2
+#define DMTX_REVISION 3
 #define DMTX_MODIFICATION 0
 
 #define NDPluginDmtxCodeFoundString "CODE_FOUND"     //asynParamInt32
 #define NDPluginDmtxCodeMessageString "CODE_MESSAGE" //asynParamOctet
 #define NDPluginDmtxNumberCodesString "NUMBER_CODES" //asynParamInt32
+
+
+/* Struct representing all data required for dmtx decoding by ADPluginDmtx */
+typedef struct AD_Dmtx_Data {
+    // init all plugin-specific variables here
+    DmtxImage *dmtxImage;
+    DmtxDecode *dmtxDecode;
+    DmtxRegion *dmtxRegion;
+    DmtxMessage *message;
+}ADDmtxData_t;
+
 
 // define all necessary structs and enums here
 
@@ -35,7 +46,7 @@ class NDPluginDmtx : public NDPluginDriver
   public:
     NDPluginDmtx(const char *portName, int queueSize, int blockingCallbacks,
                  const char *NDArrayPort, int NDArrayAddr, int maxBuffers,
-                 size_t maxMemory, int priority, int stackSize);
+                 size_t maxMemory, int priority, int stackSize, int maxThreads);
 
     //~NDPlugin___();
 
@@ -59,19 +70,10 @@ class NDPluginDmtx : public NDPluginDriver
 
   private:
 
-    // init all plugin-specific variables here
-    DmtxImage *dmtxImage;
-    DmtxDecode *dmtxDecode;
-    DmtxRegion *dmtxRegion;
-    DmtxMessage *message;
-
-    // variables for processing thread
-    bool processing = false;
-
     // init all plugin additional functions here
-    asynStatus init_dmtx_structs(NDArray *pArray, size_t width, size_t height);
-    void clear_dmtx_structs();
-    asynStatus decode_dmtx_image();
+    asynStatus init_dmtx_structs(NDArray *pArray, size_t width, size_t height, ADDmtxData_t* dmtxData);
+    void clear_dmtx_structs(ADDmtxData_t* dmtxData);
+    asynStatus decode_dmtx_image(ADDmtxData_t* dmtxData);
 };
 
 #define NUM_DMTX_PARAMS ((int)(&ND_DMTX_LAST_PARAM - &ND_DMTX_FIRST_PARAM + 1))
