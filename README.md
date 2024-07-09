@@ -1,8 +1,6 @@
 # ADPluginDmtx
 
-Author: Jakub Wlodek  
-Corresponding author: Kazimierz Gofron  
-Copyright (c): Brookhaven Science Associates 2019
+Author: Jakub Wlodek
 
 An EPICS areaDetector Plugin for reading data matrix barcodes.
 
